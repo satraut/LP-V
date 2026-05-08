@@ -1,0 +1,6 @@
+mpicc parallel_quicksort.c -o parallel_quicksort
+
+
+
+
+mpirun -np 4 ./parallel_quicksort
