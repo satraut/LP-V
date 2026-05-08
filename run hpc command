@@ -1,0 +1,4 @@
+clang++ -Xpreprocessor -fopenmp hpc1.cpp \
+-I/opt/homebrew/opt/libomp/include \
+-L/opt/homebrew/opt/libomp/lib \
+-lomp -o hpc1
