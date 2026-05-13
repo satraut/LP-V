@@ -1,0 +1,212 @@
+# Import Libraries
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.preprocessing import MinMaxScaler
+
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, Dropout
+
+# ---------------- Load Dataset ----------------
+
+data = pd.read_csv("C:/Users/Aishwarya/Downloads/Google_Stock_Price_Train.csv")
+
+print(data.head())
+
+# ---------------- Dataset Information ----------------
+
+data.info()
+
+# Convert Close column to numeric
+data["Close"] = pd.to_numeric(data.Close, errors='coerce')
+
+# Remove null values
+data = data.dropna()
+
+# Select Close column
+trainData = data.iloc[:, 4:5].values
+
+# ---------------- Feature Scaling ----------------
+
+sc = MinMaxScaler(feature_range=(0,1))
+
+trainData = sc.fit_transform(trainData)
+
+print(trainData.shape)
+
+# ---------------- Create Training Data ----------------
+
+X_train = []
+y_train = []
+
+for i in range(60, 1149):
+
+    X_train.append(trainData[i-60:i, 0])
+
+    y_train.append(trainData[i, 0])
+
+X_train, y_train = np.array(X_train), np.array(y_train)
+
+# Reshape data
+X_train = np.reshape(
+    X_train,
+    (X_train.shape[0], X_train.shape[1], 1)
+)
+
+print(X_train.shape)
+
+# ---------------- Build RNN Model ----------------
+
+model = Sequential()
+
+# First LSTM Layer
+model.add(
+    LSTM(
+        units=100,
+        return_sequences=True,
+        input_shape=(X_train.shape[1],1)
+    )
+)
+
+model.add(Dropout(0.2))
+
+# Second LSTM Layer
+model.add(
+    LSTM(
+        units=100,
+        return_sequences=True
+    )
+)
+
+model.add(Dropout(0.2))
+
+# Third LSTM Layer
+model.add(
+    LSTM(
+        units=100,
+        return_sequences=True
+    )
+)
+
+model.add(Dropout(0.2))
+
+# Fourth LSTM Layer
+model.add(
+    LSTM(
+        units=100,
+        return_sequences=False
+    )
+)
+
+model.add(Dropout(0.2))
+
+# Output Layer
+model.add(Dense(units=1))
+
+# ---------------- Compile Model ----------------
+
+model.compile(
+    optimizer='adam',
+    loss='mean_squared_error'
+)
+
+# ---------------- Train Model ----------------
+
+hist = model.fit(
+    X_train,
+    y_train,
+    epochs=20,
+    batch_size=32,
+    verbose=2
+)
+
+# ---------------- Plot Training Loss ----------------
+
+plt.plot(hist.history['loss'])
+
+plt.title('Training Model Loss')
+
+plt.ylabel('Loss')
+
+plt.xlabel('Epoch')
+
+plt.legend(['Train'], loc='upper left')
+
+plt.show()
+
+# ---------------- Load Test Dataset ----------------
+
+testData = pd.read_csv('Google_test_data.csv')
+
+testData["Close"] = pd.to_numeric(
+    testData.Close,
+    errors='coerce'
+)
+
+testData = testData.dropna()
+
+testData = testData.iloc[:, 4:5]
+
+# Actual values
+y_test = testData.iloc[60:, 0:].values
+
+# Input for prediction
+inputClosing = testData.iloc[:, 0:].values
+
+inputClosing_scaled = sc.transform(inputClosing)
+
+# ---------------- Create Test Data ----------------
+
+X_test = []
+
+length = len(testData)
+
+timestep = 60
+
+for i in range(timestep, length):
+
+    X_test.append(
+        inputClosing_scaled[i-timestep:i, 0]
+    )
+
+X_test = np.array(X_test)
+
+X_test = np.reshape(
+    X_test,
+    (X_test.shape[0], X_test.shape[1], 1)
+)
+
+print(X_test.shape)
+
+# ---------------- Predict Stock Prices ----------------
+
+y_pred = model.predict(X_test)
+
+# Convert scaled values back
+predicted_price = sc.inverse_transform(y_pred)
+
+# ---------------- Visualization ----------------
+
+plt.plot(
+    y_test,
+    color='red',
+    label='Actual Stock Price'
+)
+
+plt.plot(
+    predicted_price,
+    color='green',
+    label='Predicted Stock Price'
+)
+
+plt.title('Google Stock Price Prediction')
+
+plt.xlabel('Time')
+
+plt.ylabel('Stock Price')
+
+plt.legend()
+
+plt.show()
